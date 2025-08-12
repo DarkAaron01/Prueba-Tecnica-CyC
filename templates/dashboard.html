@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema de Usuarios{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/dashboard">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </a>
+        <div class="navbar-nav ms-auto">
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" 
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user-circle me-2"></i>{{ user.nombre }}
+                    <span class="badge role-{{ user.rol }} ms-2">{{ user.rol.title() }}</span>
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <li>
+                        <form action="/logout" method="post" class="d-inline">
+                            <button type="submit" class="dropdown-item btn-logout">
+                                <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Usuarios del Sistema
+                        <span class="badge bg-light text-dark ms-2">{{ total_users }} usuarios</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Información del usuario actual -->
+                    <div class="alert alert-info mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>Información de tu sesión
+                        </h6>
+                        <p class="mb-2">
+                            <strong>Usuario:</strong> {{ user.nombre }}<br>
+                            <strong>Rol:</strong> 
+                            <span class="badge role-{{ user.rol }}">{{ user.rol.title() }}</span><br>
+                            <strong>Renta Mensual:</strong> ${{ "%.2f"|format(user.renta_mensual) }}
+                        </p>
+                        <hr>
+                        <small class="mb-0">
+                            {% if user.rol == 'admin' %}
+                            <i class="fas fa-crown text-warning me-1"></i>
+                            Como <strong>administrador</strong>, puedes ver todos los usuarios del sistema.
+                            {% elif user.rol == 'supervisor' %}
+                            <i class="fas fa-eye text-info me-1"></i>
+                            Como <strong>supervisor</strong>, puedes ver supervisores y usuarios (no administradores).
+                            {% else %}
+                            <i class="fas fa-user text-success me-1"></i>
+                            Como <strong>usuario</strong>, solo puedes ver tu propia información.
+                            {% endif %}
+                        </small>
+                    </div>
+
+                    <!-- Tabla de usuarios -->
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="usersTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Nombre</th>
+                                    <th scope="col">Rol</th>
+                                    <th scope="col">Renta Mensual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usr in users %}
+                                <tr {% if usr.id == user.id %}class="table-warning"{% endif %}>
+                                    <th scope="row">{{ usr.id }}</th>
+                                    <td>
+                                        {{ usr.nombre }}
+                                        {% if usr.id == user.id %}
+                                        <i class="fas fa-star text-warning ms-2" title="Tu usuario"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge role-{{ usr.rol }}">
+                                            {% if usr.rol == 'admin' %}
+                                            <i class="fas fa-crown me-1"></i>
+                                            {% elif usr.rol == 'supervisor' %}
+                                            <i class="fas fa-user-tie me-1"></i>
+                                            {% else %}
+                                            <i class="fas fa-user me-1"></i>
+                                            {% endif %}
+                                            {{ usr.rol.title() }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>${{ "%.2f"|format(usr.renta_mensual) }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Estadísticas -->
+                    {% if users|length > 1 %}
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Total de Usuarios</h6>
+                                    <h3 class="text-primary">{{ users|length }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Renta Promedio</h6>
+                                    <h3 class="text-success">
+                                        ${{ "%.2f"|format((users|sum(attribute='renta_mensual'))/users|length) }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Renta Total</h6>
+                                    <h3 class="text-info">
+                                        ${{ "%.2f"|format(users|sum(attribute='renta_mensual')) }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Agregar funcionalidad de búsqueda en la tabla
+    $('#searchInput').on('keyup', function() {
+        var value = $(this).val().toLowerCase();
+        $('#usersTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
+    });
+    
+    // Tooltip para iconos
+    $('[title]').tooltip();
+});
+</script>
+{% endblock %}
